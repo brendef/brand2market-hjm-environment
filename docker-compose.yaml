@@ -1,0 +1,24 @@
+services:
+  localtunnel:
+    container_name: localtunnel
+    image: node:18-alpine
+    restart: always
+    environment:
+      - TUNNEL_SUBDOMAIN=${TUNNEL_SUBDOMAIN}
+    command: >
+      sh -c "
+      apk add --no-cache curl;
+      npm install -g localtunnel;
+      while true; do
+        echo 'Starting localtunnel...';
+        lt --port 3000 --subdomain ${TUNNEL_SUBDOMAIN} || echo 'Tunnel crashed, restarting...';
+        sleep 60;
+      done
+      "
+    networks:
+      - iqretail-hjm-network
+      
+networks:
+  default:
+    external: true
+    name: iqretail-hjm-network
