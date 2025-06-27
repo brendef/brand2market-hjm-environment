@@ -1,1 +1,2 @@
-TUNNEL_SUBDOMAIN="brand2market-hjm
+TUNNEL_SUBDOMAIN=brand2market-hjm
+TUNNEL_PORT=8090
