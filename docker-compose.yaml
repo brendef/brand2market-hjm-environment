@@ -3,6 +3,9 @@ services:
     container_name: localtunnel
     image: node:18-alpine
     restart: always
+    labels:
+      autoheal: true
+    network_mode: host
     environment:
       - TUNNEL_SUBDOMAIN=${TUNNEL_SUBDOMAIN}
       - TUNNEL_PORT=${TUNNEL_PORT}
@@ -12,14 +15,39 @@ services:
       npm install -g localtunnel;
       while true; do
         echo 'Starting localtunnel...';
-        lt --port ${TUNNEL_PORT} --subdomain ${TUNNEL_SUBDOMAIN} || echo 'Tunnel crashed, restarting...';
+        lt --port ${TUNNEL_PORT} --subdomain ${TUNNEL_SUBDOMAIN} --local-host host.docker.internal || echo 'Tunnel crashed, restarting...';
         sleep 60;
       done
       "
-    networks:
-      - iqretail-hjm-network
-      
-networks:
-  default:
-    external: true
-    name: iqretail-hjm-network
+    healthcheck:
+      test: ["CMD", "sh", "-c", "status_response=$(curl -s -o /dev/null -w '%{http_code}' https://${TUNNEL_SUBDOMAIN}.loca.lt/); [ \"$status_response\" -eq 200 ]"]
+      interval: 30s
+      timeout: 10s
+      retries: 2
+      start_period: 10s
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+  
+  autoheal:
+    container_name: autoheal
+    image: willfarrell/autoheal:latest
+    restart: always
+    environment:
+      - AUTOHEAL_CONTAINER_LABEL=autoheal
+      - AUTOHEAL_INTERVAL=10
+      - AUTOHEAL_START_PERIOD=10
+      - AUTOHEAL_DEFAULT_STOP_TIMEOUT=10
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    network_mode: none
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
